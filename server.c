@@ -1,4 +1,8 @@
 
+/**
+ * @brief Inicia un socket nuevo y devuelve su identificador
+ * @return identificador del socket iniciado (int)
+ */
 int initiate_server(void){
 	
 	int sockval;
@@ -33,6 +37,10 @@ int initiate_server(void){
 	
 }
 
+/**
+ * @brief Lanza un nueo servicio para un nuevo acceso
+ * @param connval Socket en el que se lanza el servicio (int)
+ */
 void launch_service(int connval){
 	int pid;
 	long type, aux;
@@ -60,6 +68,10 @@ void launch_service(int connval){
 
 }
 
+/**
+ * @brief Acepta una nueva conexion en un socket
+ * @param sockval Socket en el que se realiza la conexion (int)
+ */
 void accept_connection(int sockval){
 	
 	int desc, len;
