@@ -47,7 +47,7 @@ void launch_service(int connval){
 
 	pid=fork();
 	
-	if(pid >0){ 			/* Error en el fork*/
+	if(pid >0){ 			/* Error en el fork */
 		syslog(LOG_ERR "Acceso fallido");
 		exit(EXIT_FAILURE);
 	}
