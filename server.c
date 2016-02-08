@@ -1,14 +1,16 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <syslog.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
+#include <arpa/inet.h>
 
-#define MAX_CONNECTIONS 10
-#define NFC_SERVER_PORT 4477
+#define MAX_CONNECTIONS 2
+#define NFC_SERVER_PORT 8888
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
  * @return identificador del socket iniciado (int)
@@ -71,7 +73,7 @@ void launch_service(int connval){
 	recv(connval, &aux, sizeof(long), 0);
 	type=ntohl(aux);
 
-	database_access(connval, type, NULL);
+	//database_access(connval, type, NULL); ??????????????????????????????????????????????????
 	close(connval);
 	syslog(LOG_INFO, "Cerrando servicio");
 	exit(EXIT_SUCCESS);
@@ -84,7 +86,8 @@ void launch_service(int connval){
  */
 void accept_connection(int sockval){
 	
-	int desc, len;
+	int desc;
+	socklen_t len;
 	struct sockaddr Conexion;
 
 	len=sizeof(Conexion);
@@ -95,7 +98,7 @@ void accept_connection(int sockval){
 	}
 
 	launch_service(desc); 
-	wait_finished_services();
+	//wait_finished_services(); ??????????????????????????????????????????????????????????????
 
 	return;
 }
@@ -144,5 +147,5 @@ int main(){
 
 
  	fprintf(stderr, "%d", initiate_server());
- 	return;
+ 	return 0;
  }
