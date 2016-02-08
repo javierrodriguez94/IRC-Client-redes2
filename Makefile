@@ -5,12 +5,13 @@
 
 CC = gcc
 CFLAGS = -Wall -o
-CFILES = 
+CFILES = server.c
+EJECUTABLE = server
 NOMBREZIP =
 
 all:
 	
-	$(CC) $(CFLAGS) $(CFILES)
+	$(CC) $(CFLAGS) $(EJECUTABLE) $(CFILES)
 
 clean:
 	rm -f *.o 

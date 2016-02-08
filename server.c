@@ -1,4 +1,14 @@
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <syslog.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <strings.h>
 
+#define MAX_CONNECTIONS 10
+#define NFC_SERVER_PORT 4477
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
  * @return identificador del socket iniciado (int)
@@ -20,14 +30,14 @@ int initiate_server(void){
 	Direccion.sin_addr.s_addr=htonl(INADDR_ANY); /* Aceptar todas las direcciones*/
 	bzero((void*)&(Direccion.sin_zero),8);
 
-	syslog(LOG_INFO "Binding socket");
-	if(bind(sockval, (struct sockaddr *) & Direccion, sizeof(Direccion)) <0 ) {
+	syslog(LOG_INFO, "Binding socket");
+	if(bind(sockval, (struct sockaddr *) &Direccion, sizeof(Direccion)) <0 ) {
 		syslog(LOG_ERR, "Error binding socket");
 		exit(EXIT_FAILURE);
 	}
 
 
-	syslog(LOG_INFO "Escuchando conexiones");
+	syslog(LOG_INFO, "Escuchando conexiones");
 	if(listen(sockval, MAX_CONNECTIONS) <0 ) {
 		syslog(LOG_ERR, "Error escuchando conexiones");
 		exit(EXIT_FAILURE);
@@ -48,7 +58,7 @@ void launch_service(int connval){
 	pid=fork();
 	
 	if(pid >0){ 			/* Error en el fork */
-		syslog(LOG_ERR "Acceso fallido");
+		syslog(LOG_ERR, "Acceso fallido");
 		exit(EXIT_FAILURE);
 	}
 	if (pid==0){ 			/* Proceso padre */
@@ -57,7 +67,7 @@ void launch_service(int connval){
 
 	/*Codigo a ejecutar por el hijo*/
 
-	syslog(LOG_INFO "Nuevo acceso");
+	syslog(LOG_INFO, "Nuevo acceso");
 	recv(connval, &aux, sizeof(long), 0);
 	type=ntohl(aux);
 
@@ -80,7 +90,7 @@ void accept_connection(int sockval){
 	len=sizeof(Conexion);
 
 	if((desc= accept(sockval, &Conexion, &len)) <0){ /*Aceptar conexion*/
-		syslog(LOG_ERR "Error aceptando conexion");
+		syslog(LOG_ERR, "Error aceptando conexion");
 		exit(EXIT_FAILURE);
 	}
 
@@ -113,18 +123,26 @@ void accept_connection(int sockval){
 
 	if(setsid()<0){ /*Creamos un nuevo SID para el proceso hijo*/
 		syslog(LOG_ERR, "Error creando un nuevo SID para el proceso hijo.");
-		exit(EXIT_FAILURE)
+		exit(EXIT_FAILURE);
 	}
 
 	if((chdir("/"))<0){ /*Cambiando el directorio de trabajo actual*/
 		syslog(LOG_ERR, "Error cambiando el directorio de trabajo actual");
-		exit(EXIT_FAILURE)
+		exit(EXIT_FAILURE);
 	}
 
 	syslog(LOG_ERR, "Cerrando descriptores de fichero estandar");
 	close(STDIN_FILENO);
-	close(STODOUT_FILENO);
+	close(STDOUT_FILENO);
 	close(STDERR_FILENO);
 	return;
 
+ }
+
+
+int main(){
+
+
+ 	fprintf(stderr, "%d", initiate_server());
+ 	return;
  }
