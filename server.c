@@ -89,3 +89,42 @@ void accept_connection(int sockval){
 
 	return;
 }
+
+/**
+ * @brief Convcersion de un proceso en demonio
+ */
+ void do_daemon(void){
+ 	pid_t pid;
+
+ 	pid=fork();
+ 	if(pid >0){ 			/* Error en el fork */
+		exit(EXIT_FAILURE);
+	}
+	if (pid==0){ 			/* Proceso padre */
+		exit(EXIT_SUCCESS);
+	}
+
+	/*Codigo a ejecutar por el hijo*/
+
+	umask(0); /*cambiamos el archivo a modo mascara*/
+	setlogmask(LOG_UPTO(LOG_INFO)); /*Abrimos logs*/
+	openlog("Server system messages:", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL3);
+	syslog (LOG_ERR, "Iniciando nuevo server.");
+
+	if(setsid()<0){ /*Creamos un nuevo SID para el proceso hijo*/
+		syslog(LOG_ERR, "Error creando un nuevo SID para el proceso hijo.");
+		exit(EXIT_FAILURE)
+	}
+
+	if((chdir("/"))<0){ /*Cambiando el directorio de trabajo actual*/
+		syslog(LOG_ERR, "Error cambiando el directorio de trabajo actual");
+		exit(EXIT_FAILURE)
+	}
+
+	syslog(LOG_ERR, "Cerrando descriptores de fichero estandar");
+	close(STDIN_FILENO);
+	close(STODOUT_FILENO);
+	close(STDERR_FILENO);
+	return;
+
+ }
