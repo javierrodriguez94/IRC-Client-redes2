@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
+#include <stdbool.h>
 #include <arpa/inet.h>
 
 #define MAX_CONNECTIONS 2
@@ -55,25 +56,32 @@ int initiate_server(void){
  */
 void launch_service(int connval){
 	int pid;
-	long type, aux;
+	long type;
+	char aux[10];
 
+	fprintf(stderr, "launchservice");
 	pid=fork();
 	
-	if(pid >0){ 			/* Error en el fork */
+	if(pid <0){ 			/* Error en el fork */
 		syslog(LOG_ERR, "Acceso fallido");
 		exit(EXIT_FAILURE);
 	}
 	if (pid==0){ 			/* Proceso padre */
 		return;
-	}
+	}  
 
 	/*Codigo a ejecutar por el hijo*/
-
+    memset(aux, 0, sizeof(aux));
 	syslog(LOG_INFO, "Nuevo acceso");
-	recv(connval, &aux, sizeof(long), 0);
-	type=ntohl(aux);
+	while(true){
 
-	//database_access(connval, type, NULL); ??????????????????????????????????????????????????
+		recv(connval, &aux, 10, 0);
+		type=ntohl(aux);
+		fprintf(stderr, "Mensaje: %s\n", aux);
+		memset(aux, 0, sizeof(aux));
+		
+	}
+	
 	close(connval);
 	syslog(LOG_INFO, "Cerrando servicio");
 	exit(EXIT_SUCCESS);
@@ -92,19 +100,26 @@ void accept_connection(int sockval){
 
 	len=sizeof(Conexion);
 
-	if((desc= accept(sockval, &Conexion, &len)) <0){ /*Aceptar conexion*/
-		syslog(LOG_ERR, "Error aceptando conexion");
-		exit(EXIT_FAILURE);
-	}
+	while(true){
 
-	launch_service(desc); 
-	//wait_finished_services(); ??????????????????????????????????????????????????????????????
+		if((desc= accept(sockval, &Conexion, &len)) <0){ /*Aceptar conexion*/
+			syslog(LOG_ERR, "Error aceptando conexion");
+			exit(EXIT_FAILURE);
+		}
+		fprintf(stderr, "Ha llegado una conexion\n");
+		launch_service(desc); 
+	}
+		
+		fprintf(stderr, "Voy a dormir\n");
+		sleep(1);
+
+
 
 	return;
 }
 
 /**
- * @brief Convcersion de un proceso en demonio
+ * @brief Conversion de un proceso en demonio
  */
  void do_daemon(void){
  	pid_t pid;
@@ -146,6 +161,7 @@ void accept_connection(int sockval){
 int main(){
 
 
- 	fprintf(stderr, "%d", initiate_server());
+ 	//fprintf(stderr, "%d", initiate_server());
+ 	accept_connection(initiate_server());
  	return 0;
  }
