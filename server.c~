@@ -83,7 +83,7 @@ void parsear_comandos(char* command){
 				fprintf(stderr,"Pass");
 				break;
 			default:
-				fprintf(stderr,"Error");
+				fprintf("Error");
 				break;
 		}	
 	
