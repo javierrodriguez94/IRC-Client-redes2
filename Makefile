@@ -11,7 +11,7 @@ NOMBREZIP =
 
 all:
 	
-	$(CC) $(CFLAGS) $(EJECUTABLE) $(CFILES) -lircredes -lirctad -lsoundredes
+	$(CC) $(CFLAGS) $(EJECUTABLE) $(CFILES) -lircredes -lirctad -lsoundredes -lpthread
 
 clean:
 	rm -f *.o 

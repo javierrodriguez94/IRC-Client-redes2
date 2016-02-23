@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <arpa/inet.h>
 #include <redes2/irc.h>
+#include <pthread.h>
 
 #define MAX_CONNECTIONS 2
 #define NFC_SERVER_PORT 8885
@@ -94,6 +95,7 @@ void salir(){
 	fprintf(stderr,"salir");
 	close(socket1);
 	close(con);
+	pthread_exit("1");
 	exit(EXIT_SUCCESS);
 	//close()
 }
@@ -152,14 +154,18 @@ void recibir_mensajes(int connval){
  * @param connval Socket en el que se lanza el servicio (int)
  */
 void launch_service(int connval){
+	int error;
+	pthread_t idHilo; 
 	
-	
-	
+	error = pthread_create (&idHilo, NULL, recibir_mensajes, connval);
 
-	fprintf(stderr, "launchservice");
 	
+	if (error != 0)
+	{
+		syslog(LOG_ERR, "Error creando hilo");
+		exit(EXIT_FAILURE);
+	}
 	
-	recibir_mensajes(connval);
 
 
 
@@ -175,6 +181,7 @@ void accept_connection(int sockval){
 	socklen_t len;
 	struct sockaddr Conexion;
 
+	con = desc;
 	len=sizeof(Conexion);
 
 	while(true){
@@ -190,7 +197,6 @@ void accept_connection(int sockval){
 		fprintf(stderr, "Voy a dormir\n");
 		sleep(1);
 
-	con = desc;
 
 	return;
 }
