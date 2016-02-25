@@ -14,7 +14,7 @@
 #include <pthread.h>
 
 #define MAX_CONNECTIONS 2
-#define NFC_SERVER_PORT 8885
+#define NFC_SERVER_PORT 8888
 
 int socket1;
 int con;
@@ -58,21 +58,25 @@ int initiate_server(void){
 	
 }
 
-void parsear_comandos(char* command){
-	
+void parsear_comandos(char* command, int connval){
+	char **nick;
+	nick = (char**)malloc(40);
+	char **prefix;
+	prefix = (char**)malloc(40);
 		switch(IRC_CommandQuery(command))
 		{
 			case PASS:
 				fprintf(stderr,"Pass");
 				break;
 			case NICK:
-				fprintf(stderr,"Pass");
+				fprintf(stderr,"nick");
+				comando_Nick(message, socket);
 				break;
 			case USER:
-				fprintf(stderr,"Pass");
+				fprintf(stderr,"user");
 				break;
 			case JOIN:
-				fprintf(stderr,"Pass");
+				fprintf(stderr,"JOIN");
 				break;
 			case LIST:
 				fprintf(stderr,"Pass");
@@ -93,11 +97,37 @@ void parsear_comandos(char* command){
 
 void salir(){
 	fprintf(stderr,"salir");
-	close(socket1);
+	fprintf(stderr, "%d", socket1);
+	int ret = close(socket1);
+	fprintf(stderr, "%d", ret);
 	close(con);
-	pthread_exit("1");
+	//pthread_exit("1");
 	exit(EXIT_SUCCESS);
 	//close()
+}
+
+
+void comando_Nick(char* message, int socket){
+	char *prefix, *nick; 
+	int flag=0;
+	int i;
+
+	IRCParse_Nick(message, &prefix, &nick);
+
+	
+
+	/*Guardamos el nick en el cliente que lo ha mandado*/
+	if(flag==0){
+		for(i=0; i<getNumClientes(); i++){
+			if(getSocket(&clientes[i])==socket){
+				setNick(&clientes[i], nick);
+				syslog(LOG_INFO, "MIS MENSAJES ---> Nick del nuevo usuario registrado correctamente");
+				break;
+			}
+		}
+	}
+	free(prefix);
+	free(nick);
 }
 
 /**
@@ -131,15 +161,14 @@ void recibir_mensajes(int connval){
 			ret=IRC_UnPipelineCommands(aux, &command, ret);
 		    while(ret!=NULL){
 				parsear_comandos(command);
-				fprintf(stderr, "hola:\n");
 				ret=IRC_UnPipelineCommands(NULL, &command, ret);
 			}
 
-		    parsear_comandos(command);
+		    parsear_comandos(command, connval);
 		//}
 		fprintf(stderr, "Mensaje: %s\n", command);
 		
-		//memset(aux, 0, 20);
+		memset(aux, 0, 20);
 		
 	}
 	
@@ -150,21 +179,22 @@ void recibir_mensajes(int connval){
 
 
 /**
- * @brief Lanza un nueo servicio para un nuevo acceso
+ * @brief Lanza un nuevo servicio para un nuevo acceso
  * @param connval Socket en el que se lanza el servicio (int)
  */
 void launch_service(int connval){
 	int error;
-	pthread_t idHilo; 
+	//pthread_t idHilo; 
 	
-	error = pthread_create (&idHilo, NULL, recibir_mensajes, connval);
-
+	//error = pthread_create (&idHilo, NULL, recibir_mensajes, connval);
 	
-	if (error != 0)
-	{
-		syslog(LOG_ERR, "Error creando hilo");
-		exit(EXIT_FAILURE);
-	}
+	recibir_mensajes(connval);
+	
+	//if (error != 0)
+	//{
+	//	syslog(LOG_ERR, "Error creando hilo");
+	//	exit(EXIT_FAILURE);
+	//}
 	
 
 
@@ -181,7 +211,7 @@ void accept_connection(int sockval){
 	socklen_t len;
 	struct sockaddr Conexion;
 
-	con = desc;
+	
 	len=sizeof(Conexion);
 
 	while(true){
@@ -190,7 +220,8 @@ void accept_connection(int sockval){
 			syslog(LOG_ERR, "Error aceptando conexion");
 			exit(EXIT_FAILURE);
 		}
-		fprintf(stderr, "Ha llegado una conexion\n");
+		con = desc;
+		fprintf(stderr, "Ha llegado una conexion %d\n", con);
 		launch_service(desc); 
 	}
 		
