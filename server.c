@@ -62,7 +62,7 @@ int initiate_server(void){
 }
 
 void parsear_comandos(char* command, int connval){
-	char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password;
+	char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password, *channel, *key, *usermode;
 		switch(IRC_CommandQuery(command)){
 			case PASS:
 				if(IRCParse_Pass(&command, &prefix, &password)!=IRC_OK){
@@ -76,7 +76,7 @@ void parsear_comandos(char* command, int connval){
 				fprintf(stderr, "SEND PASS -->%s", mensaje);
 				fprintf(stderr,"PASS");
 				send(connval, mensaje, strlen(mensaje), 0);
-				
+
 				free(prefix);
 				prefix=NULL;
 				free(msg);
@@ -118,6 +118,22 @@ void parsear_comandos(char* command, int connval){
 				fprintf(stderr, "SEND USER -->%s", mensaje);
 				break;
 			case JOIN:
+				if (IRCParse_Join(message, &prefix, &channel, &key, &msg) < ZERO){
+					free(prefix);
+					free(channel);
+					free(key);
+					return;
+				}
+				/*Unir a un usuario a un canal*/
+				if(IRCTAD_JoinChannel(char *channel, char *user, char * usermode, char *password)!=IRC_OK){
+					fprintf(stderr, "Error en IRCTAD_JoinChannel");
+					break;
+				}
+				if(IRCMsg_Join(char **command, char *prefix, char * channel, char *key, char *msg)!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Join");
+					break;
+				}
+
 				fprintf(stderr,"JOIN");
 				break;
 			case LIST:
