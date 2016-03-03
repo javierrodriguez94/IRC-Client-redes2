@@ -68,11 +68,11 @@ void parsear_comandos(char* command, int connval){
 				fprintf(stderr,"Pass");
 				break;
 			case NICK:
-				if(IRCParse_Nick (&command, &prefix, &nick, &msg)!=IRC_OK){
+				if(IRCParse_Nick (command, &prefix, &nick, &msg)!=IRC_OK){
 					fprintf(stderr, "Error en IRCParse_Nick command:%s", command);
 					break;
 				}
-				if(IRCMsg_Nick (&mensaje, prefix, nick, msg)!=IRC_OK){
+				if(IRCMsg_Nick (&mensaje, NULL, NULL, nick)!=IRC_OK){
 					fprintf(stderr, "Error en IRCMsg_Nick");
 					break;
 				}
@@ -85,12 +85,12 @@ void parsear_comandos(char* command, int connval){
 				free(msg);
 				msg=NULL;
 				free(mensaje);
-				//mensaje=NULL;
+				mensaje=NULL;
 				break;
 			case USER:
 				fprintf(stderr,"user");
-				if(IRCParse_User (string, &prefix, &user, &mode, &server, &realname)!=IRC_OK){
-					fprintf(stderr, "Error en IRCParse_User");
+				if(IRCParse_User (command, &prefix, &user, &mode, &server, &realname)!=IRC_OK){
+					fprintf(stderr, "Error en IRCParse_User:%s", mensaje);
 					break;
 				}
 				if(IRCMsg_User (&mensaje, prefix, user, mode, realname)!=IRC_OK){
