@@ -72,7 +72,19 @@ void parsear_comandos(char* command, int connval){
 				break;
 			case NICK:
 				fprintf(stderr,"nick");
-				//comando_Nick(message, socket);
+					//IRCParse_Nick(message, &prefix, &nick);
+				/*Guardamos el nick en el cliente que lo ha mandado*/
+				if(flag==0){
+					//for(i=0; i<getNumClientes(); i++){
+						/*if(getSocket(&clientes[i])==socket){
+							setNick(&clientes[i], nick);
+							syslog(LOG_INFO, "MIS MENSAJES ---> Nick del nuevo usuario registrado correctamente");
+							break;
+						}*/
+					//}
+				}
+				free(prefix);
+				free(nick);
 				break;
 			case USER:
 				fprintf(stderr,"user");
@@ -108,29 +120,6 @@ void salir(){
 	//close()
 }
 
-
-void comando_Nick(char* message, int socket){
-	char *prefix, *nick; 
-	int flag=0;
-	int i;
-
-	//IRCParse_Nick(message, &prefix, &nick);
-
-	
-
-	/*Guardamos el nick en el cliente que lo ha mandado*/
-	if(flag==0){
-		//for(i=0; i<getNumClientes(); i++){
-			/*if(getSocket(&clientes[i])==socket){
-				setNick(&clientes[i], nick);
-				syslog(LOG_INFO, "MIS MENSAJES ---> Nick del nuevo usuario registrado correctamente");
-				break;
-			}*/
-		//}
-	}
-	free(prefix);
-	free(nick);
-}
 
 /**
  * @brief Conversion de un proceso en demonio
