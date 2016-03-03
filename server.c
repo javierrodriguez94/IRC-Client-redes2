@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <arpa/inet.h>
 #include <redes2/irc.h>
+#include <netdb.h>
 #include <pthread.h>
 
 #define MAX_CONNECTIONS 2
@@ -24,7 +25,7 @@ int con;
  */
 int initiate_server(void){
 	
-	int sockval;
+	int sockval, uno=1;
 	struct sockaddr_in Direccion;
 
 	syslog(LOG_INFO, "Creando socket");
@@ -34,6 +35,7 @@ int initiate_server(void){
 
 	}
 
+	setsockopt(sockval, SOL_SOCKET, SO_REUSEADDR, &uno, sizeof(int));
 	socket1 = sockval;
 
 	Direccion.sin_family=AF_INET;  /* TCP/IP family */
@@ -70,7 +72,7 @@ void parsear_comandos(char* command, int connval){
 				break;
 			case NICK:
 				fprintf(stderr,"nick");
-				comando_Nick(message, socket);
+				//comando_Nick(message, socket);
 				break;
 			case USER:
 				fprintf(stderr,"user");
@@ -112,19 +114,19 @@ void comando_Nick(char* message, int socket){
 	int flag=0;
 	int i;
 
-	IRCParse_Nick(message, &prefix, &nick);
+	//IRCParse_Nick(message, &prefix, &nick);
 
 	
 
 	/*Guardamos el nick en el cliente que lo ha mandado*/
 	if(flag==0){
-		for(i=0; i<getNumClientes(); i++){
-			if(getSocket(&clientes[i])==socket){
+		//for(i=0; i<getNumClientes(); i++){
+			/*if(getSocket(&clientes[i])==socket){
 				setNick(&clientes[i], nick);
 				syslog(LOG_INFO, "MIS MENSAJES ---> Nick del nuevo usuario registrado correctamente");
 				break;
-			}
-		}
+			}*/
+		//}
 	}
 	free(prefix);
 	free(nick);
@@ -160,7 +162,7 @@ void recibir_mensajes(int connval){
 			type=ntohl(*aux);
 			ret=IRC_UnPipelineCommands(aux, &command, ret);
 		    while(ret!=NULL){
-				parsear_comandos(command);
+				//parsear_comandos(command);
 				ret=IRC_UnPipelineCommands(NULL, &command, ret);
 			}
 
