@@ -15,10 +15,11 @@
 #include <pthread.h>
 
 #define MAX_CONNECTIONS 2
-#define NFC_SERVER_PORT 8888
+#define NFC_SERVER_PORT 6667
 
 int socket1;
 int con;
+char *nick;
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
  * @return identificador del socket iniciado (int)
@@ -61,33 +62,43 @@ int initiate_server(void){
 }
 
 void parsear_comandos(char* command, int connval){
-	char **nick;
-	nick = (char**)malloc(40);
-	char **prefix;
-	prefix = (char**)malloc(40);
-		switch(IRC_CommandQuery(command))
-		{
+	char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user;
+		switch(IRC_CommandQuery(command)){
 			case PASS:
 				fprintf(stderr,"Pass");
 				break;
 			case NICK:
-				fprintf(stderr,"nick");
-					//IRCParse_Nick(message, &prefix, &nick);
-				/*Guardamos el nick en el cliente que lo ha mandado*/
-				if(flag==0){
-					//for(i=0; i<getNumClientes(); i++){
-						/*if(getSocket(&clientes[i])==socket){
-							setNick(&clientes[i], nick);
-							syslog(LOG_INFO, "MIS MENSAJES ---> Nick del nuevo usuario registrado correctamente");
-							break;
-						}*/
-					//}
+				if(IRCParse_Nick (&command, &prefix, &nick, &msg)!=IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Nick command:%s", command);
+					break;
 				}
+				if(IRCMsg_Nick (&mensaje, prefix, nick, msg)!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Nick");
+					break;
+				}
+				fprintf(stderr, "SEND NICK -->%s", mensaje);
+				fprintf(stderr,"nick");
+				send(connval, mensaje, strlen(mensaje), 0);
+				/*Guardamos el nick en el cliente que lo ha mandado*/
 				free(prefix);
-				free(nick);
+				prefix=NULL;
+				free(msg);
+				msg=NULL;
+				free(mensaje);
+				//mensaje=NULL;
 				break;
 			case USER:
 				fprintf(stderr,"user");
+				if(IRCParse_User (string, &prefix, &user, &mode, &server, &realname)!=IRC_OK){
+					fprintf(stderr, "Error en IRCParse_User");
+					break;
+				}
+				if(IRCMsg_User (&mensaje, prefix, user, mode, realname)!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_User");
+					break;
+				}
+				send(connval, mensaje, strlen(mensaje), 0);
+				fprintf(stderr, "SEND USER -->%s", mensaje);
 				break;
 			case JOIN:
 				fprintf(stderr,"JOIN");
@@ -146,12 +157,12 @@ void recibir_mensajes(int connval){
 		
 		
 		//if(aux != NULL){
-			fprintf(stderr, "hola:\n");
+			
 			strcpy(aux, mensaje);
 			type=ntohl(*aux);
 			ret=IRC_UnPipelineCommands(aux, &command, ret);
 		    while(ret!=NULL){
-				//parsear_comandos(command);
+				parsear_comandos(command, connval);
 				ret=IRC_UnPipelineCommands(NULL, &command, ret);
 			}
 
