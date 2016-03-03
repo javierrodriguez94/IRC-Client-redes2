@@ -62,10 +62,27 @@ int initiate_server(void){
 }
 
 void parsear_comandos(char* command, int connval){
-	char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user;
+	char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password;
 		switch(IRC_CommandQuery(command)){
 			case PASS:
-				fprintf(stderr,"Pass");
+				if(IRCParse_Pass(&command, &prefix, &password)!=IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Pass command:%s", command);
+					break;
+				}
+				if(IRCMsg_Pass(&mensaje, prefix, password)!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Pass");
+					break;
+				}
+				fprintf(stderr, "SEND PASS -->%s", mensaje);
+				fprintf(stderr,"PASS");
+				send(connval, mensaje, strlen(mensaje), 0);
+				
+				free(prefix);
+				prefix=NULL;
+				free(msg);
+				msg=NULL;
+				free(mensaje);
+				//mensaje=NULL;
 				break;
 			case NICK:
 				if(IRCParse_Nick (&command, &prefix, &nick, &msg)!=IRC_OK){
