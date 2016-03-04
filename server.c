@@ -20,7 +20,9 @@
 
 int socket1;
 int con;
+long ERR = 0;
 char *nick;
+char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password, *channel, *key, *usermode, *host;
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
  * @return identificador del socket iniciado (int)
@@ -63,7 +65,6 @@ int initiate_server(void){
 }
 
 void parsear_comandos(char* command, int connval){
-	char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password, *channel, *key, *usermode;
 		switch(IRC_CommandQuery(command)){
 			case PASS:
 				if(IRCParse_Pass(&command, &prefix, &password)!=IRC_OK){
@@ -113,25 +114,65 @@ void parsear_comandos(char* command, int connval){
 				}
 				send(connval, mensaje, strlen(mensaje), 0);
 				break;
-			/*case JOIN:
-				if (IRCParse_Join(mensaje, &prefix, &channel, &key, &msg) < ZERO){
+			case JOIN:
+				if (IRCParse_Join(command, &prefix, &channel, &key, &msg) != IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Join ");
 					free(prefix);
 					free(channel);
 					free(key);
 					return;
 				}
-				/*Unir a un usuario a un canal*//*
-				if(IRCTAD_JoinChannel(char *channel, char *user, char * usermode, char *password)!=IRC_OK){
-					fprintf(stderr, "Error en IRCTAD_JoinChannel");
+				
+				switch(IRCTAD_JoinChannel(channel, user, "a", NULL)){
+					case IRCERR_NOVALIDUSER:
+							fprintf(stderr, " 1");
+							break;
+							case IRCERR_NOVALIDCHANNEL:
+							fprintf(stderr, " 2");
+							break;
+							case IRCERR_USERSLIMITEXCEEDED:
+							fprintf(stderr, " 3");
+							break;
+							case IRCERR_NOENOUGHMEMORY:
+							fprintf(stderr, " 4");
+							break;
+							case IRCERR_INVALIDCHANNELNAME:
+							fprintf(stderr, " 5");
+							break;
+							case IRCERR_NAMEINUSE:
+							fprintf(stderr, " 6");
+							break;
+							case IRCERR_BANEDUSERONCHANNEL:
+							fprintf(stderr, " 7");
+							break;
+							case IRCERR_NOINVITEDUSER:
+							fprintf(stderr, " 8");
+							break;
+					default:
+							fprintf(stderr, " NADA");	
+							
+							
+
+				}
+
+				fprintf(stderr,"JOIN");
+				if(IRC_Prefix(&prefix, nick, user, host, server)!=IRC_OK){
+					fprintf(stderr, "Error en IRC_Prefix");
 					break;
 				}
-				if(IRCMsg_Join(char **command, channelr *prefix, char * channel, char *key, char *msg)!=IRC_OK){
+
+				
+
+				if(IRCMsg_Join(&mensaje, prefix, NULL, key, channel)!=IRC_OK){
 					fprintf(stderr, "Error en IRCMsg_Join");
 					break;
 				}
 
-				fprintf(stderr,"JOIN");
-				break;*/
+				send(connval, mensaje, strlen(mensaje), 0);
+				fprintf(stderr, "SEND JOIN -->%s", mensaje);
+
+
+				break;
 			case LIST:
 				fprintf(stderr,"Pass");
 				break;
