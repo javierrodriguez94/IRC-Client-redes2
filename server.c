@@ -16,6 +16,7 @@
 
 #define MAX_CONNECTIONS 2
 #define NFC_SERVER_PORT 6667
+#define TAM_BUFFER 8096
 
 int socket1;
 int con;
@@ -73,8 +74,6 @@ void parsear_comandos(char* command, int connval){
 					fprintf(stderr, "Error en IRCMsg_Pass");
 					break;
 				}
-				fprintf(stderr, "SEND PASS -->%s", mensaje);
-				fprintf(stderr,"PASS");
 				send(connval, mensaje, strlen(mensaje), 0);
 
 				free(prefix);
@@ -89,23 +88,13 @@ void parsear_comandos(char* command, int connval){
 					fprintf(stderr, "Error en IRCParse_Nick command:%s", command);
 					break;
 				}
-				if(IRCMsg_Nick (&mensaje, NULL, NULL, nick)!=IRC_OK){
+				if(IRCMsg_Nick (&mensaje, "", NULL, nick)!=IRC_OK){
 					fprintf(stderr, "Error en IRCMsg_Nick");
 					break;
 				}
-				fprintf(stderr, "SEND NICK -->%s", mensaje);
-				fprintf(stderr,"nick");
 				send(connval, mensaje, strlen(mensaje), 0);
-				/*Guardamos el nick en el cliente que lo ha mandado*/
-				free(prefix);
-				prefix=NULL;
-				free(msg);
-				msg=NULL;
-				free(mensaje);
-				mensaje=NULL;
 				break;
 			case USER:
-				fprintf(stderr,"user");
 				if(IRCParse_User (command, &prefix, &user, &mode, &server, &realname)!=IRC_OK){
 					fprintf(stderr, "Error en IRCParse_User:%s", mensaje);
 					break;
@@ -115,27 +104,34 @@ void parsear_comandos(char* command, int connval){
 					break;
 				}
 				send(connval, mensaje, strlen(mensaje), 0);
-				fprintf(stderr, "SEND USER -->%s", mensaje);
+				if(!IRCTADUser_GetUserByNick (nick)){
+					IRCTADUser_Add (user, nick, realname, NULL, NULL, NULL);
+				}
+				if(IRCMsg_RplWelcome (&mensaje, "host", nick, nick, user, "host")!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_RplWelcome");
+					break;
+				}
+				send(connval, mensaje, strlen(mensaje), 0);
 				break;
-			case JOIN:
-				if (IRCParse_Join(message, &prefix, &channel, &key, &msg) < ZERO){
+			/*case JOIN:
+				if (IRCParse_Join(mensaje, &prefix, &channel, &key, &msg) < ZERO){
 					free(prefix);
 					free(channel);
 					free(key);
 					return;
 				}
-				/*Unir a un usuario a un canal*/
+				/*Unir a un usuario a un canal*//*
 				if(IRCTAD_JoinChannel(char *channel, char *user, char * usermode, char *password)!=IRC_OK){
 					fprintf(stderr, "Error en IRCTAD_JoinChannel");
 					break;
 				}
-				if(IRCMsg_Join(char **command, char *prefix, char * channel, char *key, char *msg)!=IRC_OK){
+				if(IRCMsg_Join(char **command, channelr *prefix, char * channel, char *key, char *msg)!=IRC_OK){
 					fprintf(stderr, "Error en IRCMsg_Join");
 					break;
 				}
 
 				fprintf(stderr,"JOIN");
-				break;
+				break;*/
 			case LIST:
 				fprintf(stderr,"Pass");
 				break;
@@ -175,18 +171,18 @@ void recibir_mensajes(int connval){
 	char* command;
 	char* ret=NULL;
 	long type;
-	aux = (char*)malloc(40);
-	mensaje = (char*)malloc(40);
-	ret = (char*)malloc(40);
+	aux = (char*)malloc(TAM_BUFFER);
+	mensaje = (char*)malloc(TAM_BUFFER);
+	ret = (char*)malloc(TAM_BUFFER);
 	
 	
 
 	/*Codigo a ejecutar por el hijo*/
-    	memset(aux, 0, 40);
+    	memset(aux, 0, TAM_BUFFER);
 	syslog(LOG_INFO, "Nuevo acceso");
 	while(true){
 
-		recv(connval, mensaje, 40, 0);
+		recv(connval, mensaje, TAM_BUFFER, 0);
 		
 		
 		//if(aux != NULL){
@@ -203,7 +199,7 @@ void recibir_mensajes(int connval){
 		//}
 		fprintf(stderr, "Mensaje: %s\n", command);
 		
-		memset(aux, 0, 20);
+		memset(aux, 0, TAM_BUFFER);
 		
 	}
 	
