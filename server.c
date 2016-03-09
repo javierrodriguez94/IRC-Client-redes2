@@ -15,6 +15,7 @@
 #include <pthread.h>
 
 #define MAX_CONNECTIONS 2
+#define TOPIC_MAXSIZE 100
 #define NFC_SERVER_PORT 6667
 #define TAM_BUFFER 8096
 
@@ -22,7 +23,7 @@ int socket1;
 int con;
 long ERR = 0;
 char *nick;
-char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password, *channel, *key, *usermode, *host, *target;
+char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password, *channel, *key, *usermode, *host, *target, *aux, *topic;
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
  * @return identificador del socket iniciado (int)
@@ -70,7 +71,7 @@ void parsear_comandos(char* command, int connval){
 		time_t *tiempo;
 		switch(IRC_CommandQuery(command)){
 			case PASS:
-				if(IRCParse_Pass(&command, &prefix, &password)!=IRC_OK){
+				if(IRCParse_Pass(command, &prefix, &password)!=IRC_OK){
 					fprintf(stderr, "Error en IRCParse_Pass command:%s", command);
 					break;
 				}
@@ -120,9 +121,12 @@ void parsear_comandos(char* command, int connval){
 				send(connval, mensaje, strlen(mensaje), 0);
 				if(!IRCTADUser_GetUserByNick (nick)){
 					fprintf(stderr, "ADD USER\n");
-					IRCTADUser_Add (user, nick, realname, NULL, NULL, NULL);
-					if(IRCTADUser_GetUserByNick (nick)){
-						fprintf(stderr, "ADD USER OOOOOOK\n");
+					if(IRCTADUser_Add (user, nick, realname, NULL, "host", "ip")!=IRC_OK){
+						fprintf(stderr, "Error en IRCTADUser_Add");
+						break;
+					}
+					if(!IRCTADUser_GetUserByNick (nick)){
+						fprintf(stderr, "USER MAL INTRODUCIDO\n");
 					}
 				}
 				else{ //El usuario ya existe
@@ -142,15 +146,18 @@ void parsear_comandos(char* command, int connval){
 					free(key);
 					return;
 				}
-				IRCTADChan_Add (channel, "", NULL, NULL, 3, "topic");
+				//IRCTADChan_Add (channel, "", user, NULL, 3, "topic");
 
-				switch(IRCTAD_JoinChannel(channel, "", "", NULL)){
-					case IRCERR_NOVALIDUSER:
-							fprintf(stderr, "\nERROR JOINCHANNEL 1 user:%s", channel);
-							break;
+				switch(IRCTAD_JoinChannel(channel, user, "o", NULL)){
+					case IRCERR_NAMEINUSE:
+						fprintf(stderr, "\nERROR JOINCHANNEL 6");
+						break;
 					case IRCERR_NOVALIDCHANNEL:
 						fprintf(stderr, "\nERROR JOINCHANNEL 2");
 						break;
+					case IRCERR_NOVALIDUSER:
+							fprintf(stderr, "\nERROR JOINCHANNEL 1 user:%s", channel);
+							break;
 					case IRCERR_USERSLIMITEXCEEDED:
 						fprintf(stderr, "\nERROR JOINCHANNEL 3");
 						break;
@@ -159,9 +166,6 @@ void parsear_comandos(char* command, int connval){
 						break;
 					case IRCERR_INVALIDCHANNELNAME:
 						fprintf(stderr, "\nERROR JOINCHANNEL 5");
-						break;
-					case IRCERR_NAMEINUSE:
-						fprintf(stderr, "\nERROR JOINCHANNEL 6");
 						break;
 					case IRCERR_BANEDUSERONCHANNEL:
 						fprintf(stderr, "\nERROR JOINCHANNEL 7");
@@ -202,19 +206,38 @@ void parsear_comandos(char* command, int connval){
 					send(connval, mensaje, strlen(mensaje), 0);
 					fprintf(stderr, "\nStrt:%s", mensaje);
 					IRCTADChan_GetList (&listchannels, &numberOfChannels, NULL);
-				fprintf(stderr, "\nDEBUUUUUG %d", numberOfChannels);
 					for (int i=0; i<numberOfChannels; i++) {
-						IRCMsg_RplList (&mensaje, prefix, nick, listchannels[i], "visible", IRCTADChan_GetTopic (listchannels[i], tiempo));
+						aux=(char*)malloc(2*sizeof(char));
+						topic=(char*)malloc(TOPIC_MAXSIZE+1*sizeof(char));
+						sprintf(aux, "%d", IRCTADChan_GetNumberOfUsers(listchannels[i]));
+						topic=IRCTADChan_GetTopic (listchannels[i], tiempo);
+						if(topic==NULL){
+							if(IRCMsg_RplList (&mensaje, prefix, nick, listchannels[i], aux, "")==IRCERR_NOMESSAGE){
+								fprintf(stderr, "Error en IRCMsg_RplList");
+								break;
+							}
+						}else{
+							if(IRCMsg_RplList (&mensaje, prefix, nick, listchannels[i], aux, topic)==IRCERR_NOMESSAGE){
+								fprintf(stderr, "Error en IRCMsg_RplList");
+								break;
+							}
+						}
+						free(aux);
+						free(topic);
 						send(connval, mensaje, strlen(mensaje), 0);
+						fprintf(stderr, "\nCANALES:%s", nick);
 						fprintf(stderr, "\nList:%s", mensaje);
 					}
 					IRCMsg_RplListEnd (&mensaje, prefix, nick);
 					send(connval, mensaje, strlen(mensaje), 0);
 					fprintf(stderr, "\nENd:%s", mensaje);
-					IRCTADChan_FreeList (listchannels, numberOfChannels);
+					//IRCTADChan_FreeList (listchannels, numberOfChannels);
+				}else{
+					topic=(char*)malloc(TOPIC_MAXSIZE+1*sizeof(char));
+					topic=IRCTADChan_GetTopic (channel, tiempo);
+					IRCMsg_RplTopic (&command, prefix, nick, channel, topic);
+					send(connval, mensaje, strlen(mensaje), 0);
 				}
-				IRCMsg_RplTopic (&command, prefix, nick, channel, IRCTADChan_GetTopic (channel, tiempo));
-				send(connval, mensaje, strlen(mensaje), 0);
 
 					break;
 			case PING:
