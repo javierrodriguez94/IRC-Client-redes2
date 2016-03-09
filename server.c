@@ -119,7 +119,11 @@ void parsear_comandos(char* command, int connval){
 				}
 				send(connval, mensaje, strlen(mensaje), 0);
 				if(!IRCTADUser_GetUserByNick (nick)){
+					fprintf(stderr, "ADD USER\n");
 					IRCTADUser_Add (user, nick, realname, NULL, NULL, NULL);
+					if(IRCTADUser_GetUserByNick (nick)){
+						fprintf(stderr, "ADD USER OOOOOOK\n");
+					}
 				}
 				else{ //El usuario ya existe
 						//mensaje de usuario
@@ -138,10 +142,11 @@ void parsear_comandos(char* command, int connval){
 					free(key);
 					return;
 				}
-				
-				switch(IRCTAD_JoinChannel(channel, user, "o", key)){
+				IRCTADChan_Add (channel, "", NULL, NULL, 3, "topic");
+
+				switch(IRCTAD_JoinChannel(channel, "", "", NULL)){
 					case IRCERR_NOVALIDUSER:
-							fprintf(stderr, "\nERROR JOINCHANNEL 1 user:%s", user);
+							fprintf(stderr, "\nERROR JOINCHANNEL 1 user:%s", channel);
 							break;
 					case IRCERR_NOVALIDCHANNEL:
 						fprintf(stderr, "\nERROR JOINCHANNEL 2");
