@@ -240,8 +240,10 @@ void parsear_comandos(char* command, int connval){
 				}
 
 					break;
-			case PING:
-				fprintf(stderr,"PING");
+			case WHOIS:
+				fprintf(stderr,"WHOIS");
+				IRCUserParse_Whois (mensaje, &command);
+				IRCMsg_Whois (&mensaje, prefix, NULL, char *maskarray);
 				break;
 			case PONG:
 				fprintf(stderr,"Pass");
