@@ -9,6 +9,7 @@
 #include <strings.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <redes2/irc.h>
 #include <netdb.h>
@@ -23,7 +24,8 @@ int socket1;
 int con;
 long ERR = 0;
 char *nick;
-char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password, *channel, *key, *usermode, *host, *target, *aux, *topic;
+char *prefix, *msg, *mensaje, *string, *mode,*name, *server, *realname, *user, *password, *channel, *key, *usermode, *host, *target, *aux, *topic, *maskarray;
+
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
  * @return identificador del socket iniciado (int)
@@ -68,7 +70,7 @@ int initiate_server(void){
 void parsear_comandos(char* command, int connval){
 		char **listchannels;
 		long numberOfChannels;
-		time_t *tiempo;
+		time_t *tiempo = NULL;
 		switch(IRC_CommandQuery(command)){
 			case PASS:
 				if(IRCParse_Pass(command, &prefix, &password)!=IRC_OK){
@@ -209,7 +211,7 @@ void parsear_comandos(char* command, int connval){
 					for (int i=0; i<numberOfChannels; i++) {
 						aux=(char*)malloc(2*sizeof(char));
 						topic=(char*)malloc(TOPIC_MAXSIZE+1*sizeof(char));
-						sprintf(aux, "%d", IRCTADChan_GetNumberOfUsers(listchannels[i]));
+						sprintf(aux, "%lu", IRCTADChan_GetNumberOfUsers(listchannels[i]));
 						topic=IRCTADChan_GetTopic (listchannels[i], tiempo);
 						if(topic==NULL){
 							if(IRCMsg_RplList (&mensaje, prefix, nick, listchannels[i], aux, "")==IRCERR_NOMESSAGE){
@@ -242,8 +244,41 @@ void parsear_comandos(char* command, int connval){
 					break;
 			case WHOIS:
 				fprintf(stderr,"WHOIS");
-				IRCUserParse_Whois (mensaje, &command);
-				IRCMsg_Whois (&mensaje, prefix, NULL, char *maskarray);
+				if(IRCParse_Whois(command, &prefix, &target, &maskarray)!= IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Whois");
+					break;
+				}
+				
+				if(IRCTAD_ListChannelsOfUser (user, &listchannels, &numberOfChannels)!=IRC_OK){
+					fprintf(stderr, "Error en IRCTAD_ListChannelsOfUser");					
+				}
+
+				fprintf(stderr, "\n aquiiiEsta%s",listchannels[0]);
+				for (int i=0; i<numberOfChannels; i++) {
+					if(IRCMsg_RplWhoIsChannels(&mensaje, prefix, nick, nick, listchannels[0])!= IRC_OK){
+					 	fprintf(stderr, "Error en IRCMsg_RplWhoIsChannels");
+					    break;
+					}else{
+						send(connval, mensaje, strlen(mensaje), 0);
+						fprintf(stderr, "\n%s", mensaje);						
+					}
+				}
+				IRCTAD_FreeListChannelsOfUser(listchannels, numberOfChannels);
+				
+				if(IRCMsg_RplEndOfWhoIs (&mensaje, prefix, nick, nick)!= IRC_OK){
+				 	fprintf(stderr, "Error en IRCMsg_RplEndOfWhoIs");
+				    break;
+				}
+				send(connval, mensaje, strlen(mensaje), 0);
+				fprintf(stderr, "\n%s", mensaje);
+
+
+				if(IRCMsg_Whois (&mensaje, prefix, NULL, maskarray)!= IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Whois");
+					break;
+				}
+				send(connval, mensaje, strlen(mensaje), 0);
+				fprintf(stderr, "SEND WHOIS -->%s", mensaje);
 				break;
 			case PONG:
 				fprintf(stderr,"Pass");
@@ -321,7 +356,7 @@ void recibir_mensajes(int connval){
  * @param connval Socket en el que se lanza el servicio (int)
  */
 void launch_service(int connval){
-	int error;
+	//int error;
 	//pthread_t idHilo; 
 	
 	//error = pthread_create (&idHilo, NULL, recibir_mensajes, connval);

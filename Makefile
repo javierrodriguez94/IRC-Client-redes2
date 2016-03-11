@@ -4,7 +4,7 @@
 # Practica: Canal IRC
 
 CC = gcc
-CFLAGS = -Wall -o
+CFLAGS = -Wall -Wno-unused-but-set-variable -o
 CFILES = server.c
 EJECUTABLE = server
 NOMBREZIP =
