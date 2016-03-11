@@ -252,10 +252,10 @@ void parsear_comandos(char* command, int connval){
 				if(IRCTAD_ListChannelsOfUser (user, &listchannels, &numberOfChannels)!=IRC_OK){
 					fprintf(stderr, "Error en IRCTAD_ListChannelsOfUser");					
 				}
-
-				fprintf(stderr, "\n aquiiiEsta%s",listchannels[0]);
+				IRCMsg_RplListStart (&mensaje, prefix, nick);
+				send(connval, mensaje, strlen(mensaje), 0);
 				for (int i=0; i<numberOfChannels; i++) {
-					if(IRCMsg_RplWhoIsChannels(&mensaje, prefix, nick, nick, listchannels[0])!= IRC_OK){
+					if(IRCMsg_RplWhoIsChannels(&mensaje, prefix, nick, nick, listchannels[i])!= IRC_OK){
 					 	fprintf(stderr, "Error en IRCMsg_RplWhoIsChannels");
 					    break;
 					}else{
@@ -263,7 +263,6 @@ void parsear_comandos(char* command, int connval){
 						fprintf(stderr, "\n%s", mensaje);						
 					}
 				}
-				IRCTAD_FreeListChannelsOfUser(listchannels, numberOfChannels);
 				
 				if(IRCMsg_RplEndOfWhoIs (&mensaje, prefix, nick, nick)!= IRC_OK){
 				 	fprintf(stderr, "Error en IRCMsg_RplEndOfWhoIs");
@@ -279,6 +278,8 @@ void parsear_comandos(char* command, int connval){
 				}
 				send(connval, mensaje, strlen(mensaje), 0);
 				fprintf(stderr, "SEND WHOIS -->%s", mensaje);
+				
+				IRCTAD_FreeListChannelsOfUser(listchannels, numberOfChannels);
 				break;
 			case PONG:
 				fprintf(stderr,"Pass");
