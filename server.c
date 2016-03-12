@@ -325,7 +325,12 @@ void parsear_comandos(char* command, int connval){
 					break;
 				}
 
-				
+				if(IRCMsg_Pong (&mensaje, prefix, serverPing, serverPong, " ")!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Pong");
+					break;
+				}
+				send(connval, mensaje, strlen(mensaje), 0);
+				fprintf(stderr, "\n%s", mensaje);
 				break;
 			default:
 				fprintf(stderr,"Error");
