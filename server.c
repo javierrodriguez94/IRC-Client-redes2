@@ -39,7 +39,8 @@ int con;
 long ERR = 0;
 long nelements = 0;
 char *nick;
-char *prefix,*namelist, *msg, *serverPing, *serverPong, *mensaje, *string, *mode,*name, *server, *realname, *user, *password, *channel, *key, *usermode, *host, *target, *aux, *topic, *maskarray;
+char *prefix,*namelist, *msg, *serverPing, *serverPong, *mensaje, *string, *mode,*name, *server, *realname, *user, 
+*password, *channel, *key, *usermode, *host, *target, *aux, *topic, *maskarray;
 
 
 void iniUsersList(){
@@ -48,20 +49,24 @@ void iniUsersList(){
 }
 
 int introducirUsuario(char* nick, int socket){
-	if (userslist.i<=MAX_USERS){
+	if (userslist.i>=MAX_USERS){
 		return 0;
 	}
 	userslist.u[userslist.i].nick= (char*)malloc (sizeof(nick));
 	strcpy(userslist.u[userslist.i].nick, nick);
+	userslist.u[userslist.i].socket=socket;
 	userslist.i++;
 	return 1;
 }
 
-int getSocket( char* nick){
+int getSocket(char* nick){
 	int i;
 	for(i=0; i<userslist.i; i++){
-		if(strcmp(userslist.u[i].nick, nick))
+		fprintf(stderr, "GETSOCKET %s\n", userslist.u[i].nick);
+		if(strcmp(userslist.u[i].nick, nick)==0){
+			fprintf(stderr, "Encontradoooooooo\n");
 			return userslist.u[i].socket;
+		}
 	}
 	return 0;
 }
@@ -165,11 +170,14 @@ void parsear_comandos(char* command, int connval){
 					break;
 				}
 				send(connval, mensaje, strlen(mensaje), 0);
-				introducirUsuario(nick, connval);
 				if(!IRCTADUser_GetUserByNick (nick)){
 					fprintf(stderr, "ADD USER\n");
+					if(introducirUsuario(nick, connval)!=1){
+						fprintf(stderr, "Error introduciendo usuario\n");
+						break;
+					}
 					if(IRCTADUser_Add (user, nick, realname, NULL, "host", "ip")!=IRC_OK){
-						fprintf(stderr, "Error en IRCTADUser_Add");
+						fprintf(stderr, "Error en IRCTADUser_Add\n");
 						break;
 					}
 					if(!IRCTADUser_GetUserByNick (nick)){
@@ -218,8 +226,7 @@ void parsear_comandos(char* command, int connval){
 					case IRCERR_NOINVITEDUSER:
 						fprintf(stderr, "\nERROR JOINCHANNEL 8");
 						break;
-					default:
-							fprintf(stderr, " NADA");	
+					//fprintf(stderr, " NADA");	
 							
 							
 
@@ -304,16 +311,18 @@ void parsear_comandos(char* command, int connval){
 				s1=(char*)malloc(strlen(cadenaC)+sizeof(char));	
 				sprintf(s1, "@ %s", cadenaC);	
 				fprintf(stderr, "??????0: %s\n",s1);
-				send(connval, s1, strlen(s1), 0);		
-				
-				if(IRCMsg_RplWhoIsChannels(&mensaje, prefix, nick, nick, s1, NULL)!= IRC_OK){
+				send(connval, s1, strlen(s1), 0);
+				free(mensaje);		
+				mensaje = (char*)malloc(TAM_BUFFER);
+				if(IRCMsg_RplWhoIsChannels(&mensaje, "prefix", nick, nick, s1, NULL)!= IRC_OK){
 				 	fprintf(stderr, "Error en IRCMsg_RplWhoIsChannels\n");
 				    break;
 				}
-				fprintf(stderr, "????????1: %s\n",mensaje);
+				fprintf(stderr, "????????1: %s\n",target);
 				send(connval, mensaje, strlen(mensaje), 0);
-				
-				if(IRCMsg_RplEndOfWhoIs (&mensaje, prefix, nick, nick)!= IRC_OK){
+				free(mensaje);		
+				mensaje = (char*)malloc(TAM_BUFFER);
+				if(IRCMsg_RplEndOfWhoIs (&mensaje, "prefix", nick, nick)!= IRC_OK){
 				 	fprintf(stderr, "Error en IRCMsg_RplEndOfWhoIs\n");
 				    break;
 				}
@@ -372,11 +381,16 @@ void parsear_comandos(char* command, int connval){
 				break;
 
 			case PRIVMSG:
-
+				fprintf(stderr, "PREFIX %s\n", prefix);
 				IRCParse_Privmsg (command, &prefix, &target, &msg);
-				IRCMsg_Privmsg (&mensaje, prefix, target, msg);
-				send(getSocket(nick), mensaje, strlen(mensaje),0);
-
+				IRCMsg_Privmsg (&mensaje, "Prefix", target, msg);
+				int targetSocket=getSocket(target);
+				if(targetSocket==0){
+					fprintf(stderr, "Error al obtener socket");
+					break;
+				}
+				send(targetSocket, mensaje, strlen(mensaje),0);
+				break;
 
 			default:
 				//fprintf(stderr,"Error");
@@ -392,7 +406,7 @@ void salir(){
 	int ret = close(socket1);
 	fprintf(stderr, "%d", ret);
 	close(con);
-	//pthread_exit("1");
+	pthread_exit("1");
 	exit(EXIT_SUCCESS);
 	//close()
 }
@@ -413,7 +427,7 @@ void recibir_mensajes(int connval){
 	ret = (char*)malloc(TAM_BUFFER);
 	
 	
-
+	signal(SIGINT, salir); 
 	/*Codigo a ejecutar por el hijo*/
     	memset(aux, 0, TAM_BUFFER);
 	syslog(LOG_INFO, "Nuevo acceso");
@@ -541,7 +555,7 @@ void accept_connection(int sockval){
 
 int main(){
 
-	signal(SIGINT, salir); 
+	
  	//fprintf(stderr, "%d", initiate_server());
  	accept_connection(initiate_server());
  	return 0;
