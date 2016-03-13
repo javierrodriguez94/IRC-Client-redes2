@@ -165,6 +165,7 @@ void parsear_comandos(char* command, int connval){
 					break;
 				}
 				send(connval, mensaje, strlen(mensaje), 0);
+				introducirUsuario(nick, connval);
 				if(!IRCTADUser_GetUserByNick (nick)){
 					fprintf(stderr, "ADD USER\n");
 					if(IRCTADUser_Add (user, nick, realname, NULL, "host", "ip")!=IRC_OK){
@@ -374,7 +375,7 @@ void parsear_comandos(char* command, int connval){
 
 				IRCParse_Privmsg (command, &prefix, &target, &msg);
 				IRCMsg_Privmsg (&mensaje, prefix, target, msg);
-				send(connval, mensaje, strlen(mensaje),0);
+				send(getSocket(nick), mensaje, strlen(mensaje),0);
 
 
 			default:
@@ -450,18 +451,17 @@ void recibir_mensajes(int connval){
  * @param connval Socket en el que se lanza el servicio (int)
  */
 void launch_service(int connval){
-	//int error;
-	//pthread_t idHilo; 
+	int error;
+	pthread_t idHilo; 
 	
-	//error = pthread_create (&idHilo, NULL, recibir_mensajes, connval);
+	error = pthread_create (&idHilo, NULL, recibir_mensajes, connval);
 	
-	recibir_mensajes(connval);
+	//recibir_mensajes(connval);
 	
-	//if (error != 0)
-	//{
-	//	syslog(LOG_ERR, "Error creando hilo");
-	//	exit(EXIT_FAILURE);
-	//}
+	if (error != 0){
+		syslog(LOG_ERR, "Error creando hilo");
+		exit(EXIT_FAILURE);
+	}
 	
 
 
@@ -491,10 +491,6 @@ void accept_connection(int sockval){
 		fprintf(stderr, "Ha llegado una conexion %d\n", con);
 		launch_service(desc); 
 	}
-		
-		fprintf(stderr, "Voy a dormir\n");
-		sleep(1);
-
 
 	return;
 }
