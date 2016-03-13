@@ -145,7 +145,7 @@ void parsear_comandos(char* command, int connval){
 					fprintf(stderr, "Error en IRCParse_Nick command:%s", command);
 					break;
 				}
-				if(IRCMsg_Nick (&mensaje, "", NULL, nick)!=IRC_OK){
+				if(IRCMsg_Nick (&mensaje, "prefix", NULL, nick)!=IRC_OK){
 					fprintf(stderr, "Error en IRCMsg_Nick");
 					break;
 				}
@@ -351,14 +351,14 @@ void parsear_comandos(char* command, int connval){
 				//IRCTADUser_GetUserList (char ***userlist, long *nelements)
 				IRC_CreateSpaceList(&cadenaN, nicklist, nelements);
 
-				IRCMsg_RplNamReply (&mensaje, prefix, nick, "=", channel, cadenaN);
+				IRCMsg_RplNamReply (&mensaje, "prefix", nick, "=", channel, cadenaN);
 				send(connval, mensaje, strlen(mensaje), 0);
 				/*for(int i=0; i< nelements; i++){
 					send(connval, nicklist[i], strlen(nicklist[i]), 0);
 					fprintf(stderr, "\n%s", nicklist[i]);
 				}*/
 
-				if(IRCMsg_RplEndOfNames (&mensaje, prefix, nick, channel)!= IRC_OK){
+				if(IRCMsg_RplEndOfNames (&mensaje, "prefix", nick, channel)!= IRC_OK){
 					fprintf(stderr, "Error en IRCMsg_RplEndOfNames");
 					break;
 				}else{
@@ -376,7 +376,8 @@ void parsear_comandos(char* command, int connval){
 					break;
 				}
 
-				if(IRCMsg_Pong (&mensaje, prefix, serverPing, serverPong, " ")!=IRC_OK){
+
+				if(IRCMsg_Pong (&mensaje, "prefix", serverPing, serverPong, " ")!=IRC_OK){
 					fprintf(stderr, "Error en IRCMsg_Pong");
 					break;
 				}
@@ -395,7 +396,26 @@ void parsear_comandos(char* command, int connval){
 				}
 				send(targetSocket, mensaje, strlen(mensaje),0);
 				break;
+			case PART:
+				if(IRCParse_Part (command, &prefix, &channel, &msg)!=IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Part");
+					break;
+				}
 
+				if(IRCTAD_PartChannel (channel, user)!=IRC_OK){
+					fprintf(stderr, "Error en IRCTAD_PartChannel");
+					break;
+				}
+				fprintf(stderr, "AQUI NOLLEGA: %s, %s\n", channel, user);
+				free(mensaje);		
+				mensaje = (char*)malloc(TAM_BUFFER);
+				if(IRCMsg_Part (&mensaje, "prefix", channel, msg)!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Part");
+					break;
+				}
+				send(connval, mensaje, strlen(mensaje),0);
+
+				break;
 			default:
 				//fprintf(stderr,"Error");
 				break;
