@@ -9,6 +9,7 @@
 #include <strings.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <redes2/irc.h>
 #include <netdb.h>
@@ -18,12 +19,56 @@
 #define TOPIC_MAXSIZE 100
 #define NFC_SERVER_PORT 6667
 #define TAM_BUFFER 8096
+#define MAX_USERS 10
 
+
+struct Usuario {
+	char* nick;
+	int socket;
+};
+
+
+struct UsersList {
+	struct Usuario u[MAX_USERS];
+	int i;
+};
+
+struct UsersList userslist;
 int socket1;
 int con;
 long ERR = 0;
+long nelements = 0;
 char *nick;
-char *prefix, *msg, *mensaje, *string, *mode, *server, *realname, *user, *password, *channel, *key, *usermode, *host, *target, *aux, *topic;
+char *prefix,*namelist, *msg, *serverPing, *serverPong, *mensaje, *string, *mode,*name, *server, *realname, *user, *password, *channel, *key, *usermode, *host, *target, *aux, *topic, *maskarray;
+
+
+void iniUsersList(){
+	userslist.i=0;
+	return;
+}
+
+int introducirUsuario(char* nick, int socket){
+	if (userslist.i<=MAX_USERS){
+		return 0;
+	}
+	userslist.u[userslist.i].nick= (char*)malloc (sizeof(nick));
+	strcpy(userslist.u[userslist.i].nick, nick);
+	userslist.i++;
+	return 1;
+}
+
+int getSocket( char* nick){
+	int i;
+	for(i=0; i<userslist.i; i++){
+		if(strcmp(userslist.u[i].nick, nick))
+			return userslist.u[i].socket;
+	}
+	return 0;
+}
+
+
+
+
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
  * @return identificador del socket iniciado (int)
@@ -67,8 +112,9 @@ int initiate_server(void){
 
 void parsear_comandos(char* command, int connval){
 		char **listchannels;
+		char **nicklist;
 		long numberOfChannels;
-		time_t *tiempo;
+		time_t *tiempo = NULL;
 		switch(IRC_CommandQuery(command)){
 			case PASS:
 				if(IRCParse_Pass(command, &prefix, &password)!=IRC_OK){
@@ -146,9 +192,7 @@ void parsear_comandos(char* command, int connval){
 					free(key);
 					return;
 				}
-				//IRCTADChan_Add (channel, "", user, NULL, 3, "topic");
-
-				switch(IRCTAD_JoinChannel(channel, user, "o", NULL)){
+				switch(IRCTAD_JoinChannel(channel, user, "a", NULL)){
 					case IRCERR_NAMEINUSE:
 						fprintf(stderr, "\nERROR JOINCHANNEL 6");
 						break;
@@ -192,7 +236,6 @@ void parsear_comandos(char* command, int connval){
 					fprintf(stderr, "Error en IRCMsg_Join");
 					break;
 				}
-
 				send(connval, mensaje, strlen(mensaje), 0);
 				fprintf(stderr, "SEND JOIN -->%s", mensaje);
 
@@ -209,7 +252,7 @@ void parsear_comandos(char* command, int connval){
 					for (int i=0; i<numberOfChannels; i++) {
 						aux=(char*)malloc(2*sizeof(char));
 						topic=(char*)malloc(TOPIC_MAXSIZE+1*sizeof(char));
-						sprintf(aux, "%d", IRCTADChan_GetNumberOfUsers(listchannels[i]));
+						sprintf(aux, "%lu", IRCTADChan_GetNumberOfUsers(listchannels[i]));
 						topic=IRCTADChan_GetTopic (listchannels[i], tiempo);
 						if(topic==NULL){
 							if(IRCMsg_RplList (&mensaje, prefix, nick, listchannels[i], aux, "")==IRCERR_NOMESSAGE){
@@ -231,7 +274,7 @@ void parsear_comandos(char* command, int connval){
 					IRCMsg_RplListEnd (&mensaje, prefix, nick);
 					send(connval, mensaje, strlen(mensaje), 0);
 					fprintf(stderr, "\nENd:%s", mensaje);
-					//IRCTADChan_FreeList (listchannels, numberOfChannels);
+					IRCTADChan_FreeList (listchannels, numberOfChannels);
 				}else{
 					topic=(char*)malloc(TOPIC_MAXSIZE+1*sizeof(char));
 					topic=IRCTADChan_GetTopic (channel, tiempo);
@@ -242,14 +285,100 @@ void parsear_comandos(char* command, int connval){
 					break;
 			case WHOIS:
 				fprintf(stderr,"WHOIS");
-				IRCUserParse_Whois (mensaje, &command);
-				IRCMsg_Whois (&mensaje, prefix, NULL, char *maskarray);
+				char *cadenaC;
+
+				if(IRCParse_Whois(command, &prefix, &target, &maskarray)!= IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Whois\n");
+					break;
+				}
+				
+				if(IRCTAD_ListChannelsOfUser (user, &listchannels, &numberOfChannels)!=IRC_OK){
+					fprintf(stderr, "Error en IRCTAD_ListChannelsOfUser\n");		
+					break;			
+				}
+
+				IRC_CreateSpaceList(&cadenaC, listchannels, numberOfChannels);
+
+				char * s1;
+				s1=(char*)malloc(strlen(cadenaC)+sizeof(char));	
+				sprintf(s1, "@ %s", cadenaC);	
+				fprintf(stderr, "??????0: %s\n",s1);
+				send(connval, s1, strlen(s1), 0);		
+				
+				if(IRCMsg_RplWhoIsChannels(&mensaje, prefix, nick, nick, s1, NULL)!= IRC_OK){
+				 	fprintf(stderr, "Error en IRCMsg_RplWhoIsChannels\n");
+				    break;
+				}
+				fprintf(stderr, "????????1: %s\n",mensaje);
+				send(connval, mensaje, strlen(mensaje), 0);
+				
+				if(IRCMsg_RplEndOfWhoIs (&mensaje, prefix, nick, nick)!= IRC_OK){
+				 	fprintf(stderr, "Error en IRCMsg_RplEndOfWhoIs\n");
+				    break;
+				}
+				fprintf(stderr, "?????????2: %s\n", mensaje);
+				send(connval, mensaje, strlen(mensaje), 0);
+
+				IRCTAD_FreeListChannelsOfUser(listchannels, numberOfChannels);
 				break;
-			case PONG:
+
+			case NAMES:				
+				fprintf(stderr,"NAMES");
+				char * cadenaN;
+				if(IRCParse_Names (command, &prefix, &channel, &target)!= IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Names");
+					break;
+				}
+
+
+				if(IRCTADUser_GetNickList (&nicklist, &nelements)!= IRC_OK){
+					fprintf(stderr, "Error en IRCTADUser_GetNickList");
+					break;
+				}
+				//IRCTADUser_GetUserList (char ***userlist, long *nelements)
+				IRC_CreateSpaceList(&cadenaN, nicklist, nelements);
+
+				IRCMsg_RplNamReply (&mensaje, prefix, nick, "=", channel, cadenaN);
+				send(connval, mensaje, strlen(mensaje), 0);
+				/*for(int i=0; i< nelements; i++){
+					send(connval, nicklist[i], strlen(nicklist[i]), 0);
+					fprintf(stderr, "\n%s", nicklist[i]);
+				}*/
+
+				if(IRCMsg_RplEndOfNames (&mensaje, prefix, nick, channel)!= IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_RplEndOfNames");
+					break;
+				}else{
+					send(connval, mensaje, strlen(mensaje), 0);
+					fprintf(stderr, "\n%s", mensaje);
+				}
+
+
+				break;
+			case PING:
 				fprintf(stderr,"Pass");
+				if(IRCParse_Ping (command, &prefix, &serverPing, &serverPong, &msg)!= IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Names");
+					break;
+				}
+
+				if(IRCMsg_Pong (&mensaje, prefix, serverPing, serverPong, " ")!=IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Pong");
+					break;
+				}
+				send(connval, mensaje, strlen(mensaje), 0);
+				fprintf(stderr, "\n%s", mensaje);
 				break;
+
+			case PRIVMSG:
+
+				IRCParse_Privmsg (command, &prefix, &target, &msg);
+				IRCMsg_Privmsg (&mensaje, prefix, target, msg);
+				send(connval, mensaje, strlen(mensaje),0);
+
+
 			default:
-				fprintf(stderr,"Error");
+				//fprintf(stderr,"Error");
 				break;
 		}	
 	
@@ -304,7 +433,7 @@ void recibir_mensajes(int connval){
 
 		    parsear_comandos(command, connval);
 		//}
-		fprintf(stderr, "Mensaje: %s\n", command);
+		//fprintf(stderr, "Mensaje: %s\n", command);
 		
 		memset(aux, 0, TAM_BUFFER);
 		
@@ -321,7 +450,7 @@ void recibir_mensajes(int connval){
  * @param connval Socket en el que se lanza el servicio (int)
  */
 void launch_service(int connval){
-	int error;
+	//int error;
 	//pthread_t idHilo; 
 	
 	//error = pthread_create (&idHilo, NULL, recibir_mensajes, connval);
