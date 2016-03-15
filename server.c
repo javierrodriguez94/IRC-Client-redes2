@@ -121,6 +121,9 @@ void parsear_comandos(char* command, int connval){
 		char **nicklist;
 		long numberOfChannels;
 		time_t *tiempo = NULL;
+		char **listusers; 
+		long numberOfUsers, i;
+		
 		switch(IRC_CommandQuery(command)){
 			case PASS:
 				if(IRCParse_Pass(command, &prefix, &password)!=IRC_OK){
@@ -141,13 +144,21 @@ void parsear_comandos(char* command, int connval){
 				//mensaje=NULL;
 				break;
 			case NICK:
-				if(IRCParse_Nick (command, &prefix, &nick, &msg)!=IRC_OK){
-					fprintf(stderr, "Error en IRCParse_Nick command:%s", command);
+				/*if(IRCTADUser_SetNickByUser(nick, user)!= IRC_OK){
+					fprintf(stderr, "Error en IRCTADUser_SetNickByUser, nick:%s user:%s\n", nick, user);
 					break;
+				}*/
+				if(IRCParse_Nick (command, &prefix, &nick, &msg)!=IRC_OK){
+					case IRCERR_INVALIDNICK:
+						fprintf(stderr, "NICK---------INVALIDNICK");
+						break;
+					case IRCERR_INVALIDUSER:
+						fprintf(stderr, "NICK---------INVALIDUSER");
+						break;
 				}
 
-				if(IRCTADUser_SetNickByUser(nick, user)!= IRC_OK){
-					fprintf(stderr, "Error en IRCTADUser_SetNickByUser\n");
+				switch(IRCTADUser_SetNickByUser(nick, user)!= IRC_OK){
+					fprintf(stderr, "Error en IRCTADUser_SetNickByUser, nick:%s user:%s\n", nick, user);
 					break;
 				}
 				
@@ -394,15 +405,28 @@ void parsear_comandos(char* command, int connval){
 				break;
 
 			case PRIVMSG:
-				fprintf(stderr, "PREFIX %s\n", prefix);
+
 				IRCParse_Privmsg (command, &prefix, &target, &msg);
-				IRCMsg_Privmsg (&mensaje, "Prefix", target, msg);
-				int targetSocket=getSocket(target);
-				if(targetSocket==0){
-					fprintf(stderr, "Error al obtener socket");
-					break;
+				fprintf(stderr, "Target channel o user ------------------:%s\n", target);
+				if(IRCTAD_ListUsersOnChannel (target, &listusers, &numberOfUsers)==IRCERR_NOVALIDCHANNEL){ //MENSAJE PRIVADO A USUARIO
+					IRCMsg_Privmsg (&mensaje, "Prefix", target, msg);
+					int targetSocket=getSocket(target);
+					if(targetSocket==0){
+						fprintf(stderr, "Error al obtener socket\n");
+						break;
+					}
+					send(targetSocket, mensaje, strlen(mensaje),0);
+				}else{ 																						//MENSAJE A UN GRUPO
+					for(i=0; i<numberOfUsers; i++){
+						IRCMsg_Privmsg (&mensaje, "Prefix", listusers[i], msg);
+						int targetSocket=getSocket(listusers[i]);
+						if(targetSocket==0){
+							fprintf(stderr, "Error al obtener socket innnnnnn \n");
+							break;
+						}
+						send(targetSocket, mensaje, strlen(mensaje),0);
+					}
 				}
-				send(targetSocket, mensaje, strlen(mensaje),0);
 				break;
 			case PART:
 				if(IRCParse_Part (command, &prefix, &channel, &msg)!=IRC_OK){
@@ -424,38 +448,38 @@ void parsear_comandos(char* command, int connval){
 				send(connval, mensaje, strlen(mensaje),0);
 
 				break;
-				case TOPIC:
-				    time(tiempo);
-					if(IRCParse_Topic (command, &prefix, &channel, &topic)!= IRC_OK){
-						fprintf(stderr, "Error en IRCParse_Topic");
+			case TOPIC:
+			    time(tiempo);
+				if(IRCParse_Topic (command, &prefix, &channel, &topic)!= IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Topic");
+					break;
+				}
+				if(topic == NULL){
+					IRCMsg_RplNoTopic(&mensaje, "prefix", nick, channel, "No topic is set");
+					topic = IRCTADChan_GetTopic (channel, tiempo);
+					IRCMsg_Topic (&mensaje, "prefix", channel, topic);
+					send(connval, mensaje, strlen(mensaje),0);
+				}else{
+					/*IRC_Prefix (&prefix, NULL, user, host, server);
+					fprintf(stderr, "Prefix = %s", server);*/
+					//fprintf(stderr, "Prefix = %s", nick);
+					if(IRCMsg_RplTopic (&mensaje, "prefix", nick, channel, topic)!= IRC_OK){
+						fprintf(stderr, "Error en IRCMsg_RplTopic");
 						break;
 					}
-					if(topic == NULL){
-						IRCMsg_RplNoTopic(&mensaje, "prefix", nick, channel, "No topic is set");
-						topic = IRCTADChan_GetTopic (channel, tiempo);
-						IRCMsg_Topic (&mensaje, "prefix", channel, topic);
-						send(connval, mensaje, strlen(mensaje),0);
-					}else{
-						/*IRC_Prefix (&prefix, NULL, user, host, server);
-						fprintf(stderr, "Prefix = %s", server);*/
-						//fprintf(stderr, "Prefix = %s", nick);
-						if(IRCMsg_RplTopic (&mensaje, "prefix", nick, channel, topic)!= IRC_OK){
-							fprintf(stderr, "Error en IRCMsg_RplTopic");
-							break;
-						}
-						//send(connval, mensaje, strlen(mensaje),0);
-						if(IRCTADChan_SetTopic (channel, topic)!=IRC_OK){
-							fprintf(stderr, "Error en IRCTADChan_SetTopic");
-							break;
-						}
-						fprintf(stderr, "END TOPIC");
-						IRCMsg_Topic (&mensaje, "prefix", channel, topic);
-						send(connval, mensaje, strlen(mensaje),0);
+					//send(connval, mensaje, strlen(mensaje),0);
+					if(IRCTADChan_SetTopic (channel, topic)!=IRC_OK){
+						fprintf(stderr, "Error en IRCTADChan_SetTopic");
+						break;
 					}
-				break;
-				case KICK:
+					fprintf(stderr, "END TOPIC");
+					IRCMsg_Topic (&mensaje, "prefix", channel, topic);
+					send(connval, mensaje, strlen(mensaje),0);
+				}
+			break;
+			case KICK:
 
-				break;
+			break;
 			default:
 				//fprintf(stderr,"Error");
 				break;
