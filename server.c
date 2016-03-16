@@ -491,34 +491,32 @@ fprintf(stderr, "DEBUUUUUUUUUUUGGGGG ________________________________________\n"
 
 			break;
 		case TOPIC:
-		    time(tiempo);
-			if(IRCParse_Topic (command, &prefix, &channel, &topic)!= IRC_OK){
-				fprintf(stderr, "Error en IRCParse_Topic");
+				    time(tiempo);
+					if(IRCParse_Topic (command, &prefix, &channel, &topic)!= IRC_OK){
+						fprintf(stderr, "Error en IRCParse_Topic");
+						break;
+					}
+					
+					if(topic == NULL || (strcmp(topic, "") == 0)){
+						topic = IRCTADChan_GetTopic (channel, tiempo);	
+						if (topic == NULL || (strcmp(topic, "") == 0)){
+							IRCMsg_RplNoTopic(&mensaje, "prefix", *nick, channel, topic);
+							send(connval, mensaje, strlen(mensaje),0);
+						}else{
+							IRCMsg_RplTopic (&mensaje, "prefix", *nick, channel, topic);
+							send(connval, mensaje, strlen(mensaje),0);
+						}
+						
+					}else{
+						if(IRCTADChan_SetTopic (channel, topic)!=IRC_OK){
+							fprintf(stderr, "Error en IRCTADChan_SetTopic");
+							break;
+						}
+						IRC_Prefix (&prefix, nick, nick, nick, server);
+						IRCMsg_Topic (&mensaje, prefix, channel, topic);
+						send(connval, mensaje, strlen(mensaje),0);
+					}
 				break;
-			}
-			if(topic == NULL){
-				IRCMsg_RplNoTopic(&mensaje, "prefix", *nick, channel, "No topic is set");
-				topic = IRCTADChan_GetTopic (channel, tiempo);
-				IRCMsg_Topic (&mensaje, "prefix", channel, topic);
-				send(connval, mensaje, strlen(mensaje),0);
-			}else{
-				/*IRC_Prefix (&prefix, NULL, user, host, server);
-				fprintf(stderr, "Prefix = %s", server);*/
-				//fprintf(stderr, "Prefix = %s", nick);
-				if(IRCMsg_RplTopic (&mensaje, "prefix", *nick, channel, topic)!= IRC_OK){
-					fprintf(stderr, "Error en IRCMsg_RplTopic");
-					break;
-				}
-				//send(connval, mensaje, strlen(mensaje),0);
-				if(IRCTADChan_SetTopic (channel, topic)!=IRC_OK){
-					fprintf(stderr, "Error en IRCTADChan_SetTopic");
-					break;
-				}
-				fprintf(stderr, "END TOPIC");
-				IRCMsg_Topic (&mensaje, "prefix", channel, topic);
-				send(connval, mensaje, strlen(mensaje),0);
-			}
-		break;
 			
 	}
 }
