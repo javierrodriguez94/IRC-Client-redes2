@@ -2,9 +2,9 @@
 # Asignatura: Redes2
 # Grupo:
 # Practica: Canal IRC
-
+#-Wno-unused-but-set-variable
 CC = gcc
-CFLAGS = -Wall -Wno-unused-but-set-variable -o
+CFLAGS = -Wall  -o
 CFILES = server.c
 EJECUTABLE = server
 NOMBREZIP =
