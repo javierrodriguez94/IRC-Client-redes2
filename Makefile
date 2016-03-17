@@ -7,7 +7,7 @@ CC = gcc
 CFLAGS = -Wall  -o
 CFILES = src/server.c
 EJECUTABLE = server
-NOMBREZIP = G-2361-01-P1
+NOMBREZIP = G-2361-01-P1.tar.gz
 
 all:
 	
@@ -23,6 +23,7 @@ g_autores:
 	echo "G - CCCC - NN - P1" >> ../autores.txt
 	echo "266811#Arribas Jara, Fernando" >> ../autores.txt
 	echo "282917#Rodríguez Inés, Javier" >> ../autores.txt
+	cp ../autores.txt ./autores.txt
 empaquetar:
-	make comprimir
 	make g_autores
+	make comprimir
