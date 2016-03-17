@@ -497,12 +497,12 @@ void parsear_comandos(char* command, int connval){
 							break;
 						}
 						fprintf(stderr, "Mensaje = %s", mensaje);
-						int targetSocket=getSocket(target);
+						int targetSocket=getDescriptor(target);
 						send(targetSocket, mensaje, strlen(mensaje),0);
 					}
 					if(IRCTAD_GetUserModeOnChannel (channel, *user) == 0x0020){
 						IRCMsg_ErrChanOPrivsNeeded (&mensaje, "prefix", *user, channel);
-						int targetSocket=getSocket(*user);
+						int targetSocket=getDescriptor(*user);
 						send(targetSocket, mensaje, strlen(mensaje),0);
 					}
 					IRCTAD_ShowUsersOnChannel (channel);				
