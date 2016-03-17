@@ -1,90 +1,10 @@
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <netinet/in.h>
-#include <syslog.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <strings.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <time.h>
-#include <arpa/inet.h>
-#include <redes2/irc.h>
-#include <netdb.h>
-#include <pthread.h>
-
-#define MAX_CONNECTIONS 20
-#define TOPIC_MAXSIZE 100
-#define NFC_SERVER_PORT 6667
-#define TAM_BUFFER 8096
-#define MAX_USERS 20
+#include "../includes/server.h"
+#include "../includes/structUsers.h"
 
 
-struct Usuario {
-	char* user;
-	char* nick;
-	pthread_t tid;
-	int descriptor;
-};
 
-
-struct UsersList {
-	struct Usuario u[MAX_USERS];
-	int i;
-};
-
-struct UsersList userslist;
 int socket1;
-int con;
-long ERR = 0;
-long nelements = 0;
 
-
-
-
-void iniUsersList(){
-	userslist.i=0;
-	return;
-}
-void setUser(pthread_t tid, int descriptor){
-	userslist.u[userslist.i].tid=tid;
-	userslist.u[userslist.i].descriptor=descriptor;
-	userslist.i++;
-}
-
-int getDescriptor(char* nick){
-	int i;
-	for(i=0; i<userslist.i; i++){
-		if(strcmp(userslist.u[i].nick, nick)==0){
-			return userslist.u[i].descriptor;
-		}
-	}
-	return 0;
-}
-
-char** getUser(pthread_t tid){
-	int i;
-	for(i=0; i<userslist.i; i++){
-		if(userslist.u[i].tid==tid){
-			return &userslist.u[i].user;
-		}
-	}
-	fprintf(stderr, "getUser tid no encontrado NULL\n");
-	return NULL;
-}
-
-char** getNick(pthread_t tid){
-	int i;
-	for(i=0; i<userslist.i; i++){
-		if(userslist.u[i].tid==tid){
-			return &userslist.u[i].nick;
-		}
-	}
-	fprintf(stderr, "getNick tid no encontrado NULL\n");
-	return NULL;
-}
 
 /**
  * @brief Inicia un socket nuevo y devuelve su identificador
@@ -101,6 +21,8 @@ int initiate_server(void){
 		exit(EXIT_FAILURE);
 
 	}
+
+	iniUsersList();
 
 	setsockopt(sockval, SOL_SOCKET, SO_REUSEADDR, &uno, sizeof(int));
 	socket1 = sockval;
@@ -127,7 +49,7 @@ int initiate_server(void){
 	
 }
 
-void parsear_comandos(char* command, int connval){
+void parsear_comandos(char* command, int connval, char** user, char** nick){
 	char **listchannels;
 	char **nicklist;
 	long numberOfChannels;
@@ -135,11 +57,11 @@ void parsear_comandos(char* command, int connval){
 	char **listusers; 
 	long numberOfUsers;
 	long i;
-	char ** user, **nick;
+	//char ** user, **nick;
 	char *cadenaC, *cadenaN;
 	static char *prefix, *msg, *serverPing, *serverPong, *mensaje, *mode, *server, *realname, *password, *channel, *key, *host, *target, *aux, *topic, *maskarray;
-	user=getUser(pthread_self());
-	nick=getNick(pthread_self());
+	//user=getUser(pthread_self());
+	//nick=getNick(pthread_self());
 
 	tiempo=NULL;
 
@@ -361,17 +283,21 @@ void parsear_comandos(char* command, int connval){
 				break;
 			}
 
+			
 
-			if(IRCTADUser_GetNickList (&nicklist, &nelements)!= IRC_OK){
+   			IRCTAD_ListUsersOnChannel (channel, &listusers, &numberOfUsers);
+			/*if(IRCTADUser_GetNickList (&nicklist, &nelements)!= IRC_OK){
 				fprintf(stderr, "Error en IRCTADUser_GetNickList");
 				break;
-			}
+			}*/
 			//IRCTADUser_GetUserList (char ***userlist, long *nelements)
-			IRC_CreateSpaceList(&cadenaN, nicklist, nelements);
-
-			IRCMsg_RplNamReply (&mensaje, "prefix", *nick, "=", channel, cadenaN);
-			send(connval, mensaje, strlen(mensaje), 0);
-			/*for(int i=0; i< nelements; i++){
+			if(numberOfUsers!=0){
+				IRC_CreateSpaceList(&cadenaN, listusers, numberOfUsers);
+				IRCMsg_RplNamReply (&mensaje, "prefix", *nick, "=", channel, cadenaN);
+				send(connval, mensaje, strlen(mensaje), 0);
+			}
+			
+			/*for(int i=0; i< numberOfUsers; i++){
 				send(connval, nicklist[i], strlen(nicklist[i]), 0);
 				fprintf(stderr, "\n%s", nicklist[i]);
 			}*/
@@ -477,36 +403,63 @@ void parsear_comandos(char* command, int connval){
 					}
 		break;
 		case KICK:
-					if(IRCParse_Kick (command, &prefix, &channel, &target, &msg) != IRC_OK){
-							fprintf(stderr, "Error en IRCParse_Kick");
-							break;
-					}
+			if(IRCParse_Kick (command, &prefix, &channel, &target, &msg) != IRC_OK){
+					fprintf(stderr, "Error en IRCParse_Kick");
+					break;
+			}
 
-					
+			
 
-					IRCTAD_ShowUsersOnChannel (channel);
-					if(IRCTAD_GetUserModeOnChannel (channel, *user) == 0x0023){
-					 //&& IRCTAD_GetUserModeOnChannel (channel, target) != 0x0023){
-						if(IRCTAD_KickUserFromChannel (channel, target)!= IRC_OK){
-							fprintf(stderr, "Error en IRCTAD_KickUserFromChannel");
-							break;
-						}
+			IRCTAD_ShowUsersOnChannel (channel);
+			if(IRCTAD_GetUserModeOnChannel (channel, *user) == 0x0003){
+			 //&& IRCTAD_GetUserModeOnChannel (channel, target) != 0x0023){
+				if(IRCTAD_KickUserFromChannel (channel, target)!= IRC_OK){
+					fprintf(stderr, "Error en IRCTAD_KickUserFromChannel");
+					break;
+				}
 
-						if(IRCMsg_Kick(&mensaje, "prefix", channel, target, msg)!= IRC_OK){
-							fprintf(stderr, "Error en IRCMsg_Kick");
-							break;
-						}
-						fprintf(stderr, "Mensaje = %s", mensaje);
-						int targetSocket=getDescriptor(target);
-						send(targetSocket, mensaje, strlen(mensaje),0);
-					}
-					if(IRCTAD_GetUserModeOnChannel (channel, *user) == 0x0020){
-						IRCMsg_ErrChanOPrivsNeeded (&mensaje, "prefix", *user, channel);
-						int targetSocket=getDescriptor(*user);
-						send(targetSocket, mensaje, strlen(mensaje),0);
-					}
-					IRCTAD_ShowUsersOnChannel (channel);				
-				break;
+				if(IRCMsg_Kick(&mensaje, "prefix", channel, target, msg)!= IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_Kick");
+					break;
+				}
+				fprintf(stderr, "Mensaje = %s", mensaje);
+				int targetSocket=getDescriptor(target);
+				send(targetSocket, mensaje, strlen(mensaje),0);
+			}
+			if(IRCTAD_GetUserModeOnChannel (channel, *user) == 0x0002){
+				IRCMsg_ErrChanOPrivsNeeded (&mensaje, "prefix", *user, channel);
+				int targetSocket=getDescriptor(*user);
+				send(targetSocket, mensaje, strlen(mensaje),0);
+			}
+			IRCTAD_ShowUsersOnChannel (channel);				
+		break;
+		case QUIT:
+			IRCParse_Quit (command, "prefix", &msg);
+			close(getDescriptor(pthread_self));
+			break;
+		case MOTD:
+
+			if(IRCMsg_RplMotd (&mensaje, "prefix", *nick, "Comando MOTD")!= IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_RplMotd");
+					break;
+			}
+			int targetSocket1=getDescriptor(*user);
+			send(targetSocket1, mensaje, strlen(mensaje),0);
+			if(IRCMsg_RplMotdStart (&mensaje, "prefix", *nick, IRCTADUser_GetHostByNick (*nick))!= IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_RplMotdStart");
+					break;
+			}
+			
+			send(targetSocket1, mensaje, strlen(mensaje),0);
+
+			
+			if(IRCMsg_RplEndOfMotd (&mensaje, "prefix", *nick)!= IRC_OK){
+					fprintf(stderr, "Error en IRCMsg_RplEndOfMotd");
+					break;
+			}
+			send(targetSocket1, mensaje, strlen(mensaje),0);
+			break;
+
 			
 	}
 }
@@ -518,7 +471,7 @@ void salir(){
 	fprintf(stderr, "%d", socket1);
 	int ret = close(socket1);
 	fprintf(stderr, "%d", ret);
-	close(con);
+	close(getDescriptor(pthread_self()));
 	pthread_exit("1");
 	exit(EXIT_SUCCESS);
 	//close()
@@ -552,10 +505,10 @@ void* recibir_mensajes(int connval){
 		//type=ntohl(*aux);
 		ret=IRC_UnPipelineCommands(aux, &command, ret);
 	    while(ret!=NULL){
-			parsear_comandos(command, connval);
+			parsear_comandos(command, connval, getUser(pthread_self()), getNick(pthread_self()));
 			ret=IRC_UnPipelineCommands(NULL, &command, ret);
 		}
-		parsear_comandos(command, connval);		
+		parsear_comandos(command, connval, getUser(pthread_self()), getNick(pthread_self()));		
 		memset(aux, 0, TAM_BUFFER);		
 	}
 	
@@ -658,7 +611,7 @@ void accept_connection(int sockval){
 
 int main(){
 
-	iniUsersList();
+	
  	//fprintf(stderr, "%d", initiate_server());
  	accept_connection(initiate_server());
  	return 0;

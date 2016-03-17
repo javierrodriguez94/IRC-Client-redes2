@@ -5,7 +5,7 @@
 #-Wno-unused-but-set-variable
 CC = gcc
 CFLAGS = -Wall  -o
-CFILES = src/server.c
+CFILES = src/*
 EJECUTABLE = server
 NOMBREZIP = G-2361-01-P1.tar.gz
 
