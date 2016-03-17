@@ -5,9 +5,9 @@
 #-Wno-unused-but-set-variable
 CC = gcc
 CFLAGS = -Wall  -o
-CFILES = server.c
+CFILES = src/server.c
 EJECUTABLE = server
-NOMBREZIP =
+NOMBREZIP = G-2361-01-P1
 
 all:
 	
@@ -16,5 +16,13 @@ all:
 clean:
 	rm -f *.o 
 
-zip:
-	zip ../$(NOMBREZIP) *
+comprimir:
+	tar -czvf ../$(NOMBREZIP) *
+
+g_autores:
+	echo "G - CCCC - NN - P1" >> ../autores.txt
+	echo "266811#Arribas Jara, Fernando" >> ../autores.txt
+	echo "282917#Rodríguez Inés, Javier" >> ../autores.txt
+empaquetar:
+	make comprimir
+	make g_autores
