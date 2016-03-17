@@ -476,7 +476,37 @@ void parsear_comandos(char* command, int connval){
 						send(connval, mensaje, strlen(mensaje),0);
 					}
 		break;
-		
+		case KICK:
+					if(IRCParse_Kick (command, &prefix, &channel, &target, &msg) != IRC_OK){
+							fprintf(stderr, "Error en IRCParse_Kick");
+							break;
+					}
+
+					
+
+					IRCTAD_ShowUsersOnChannel (channel);
+					if(IRCTAD_GetUserModeOnChannel (channel, *user) == 0x0023){
+					 //&& IRCTAD_GetUserModeOnChannel (channel, target) != 0x0023){
+						if(IRCTAD_KickUserFromChannel (channel, target)!= IRC_OK){
+							fprintf(stderr, "Error en IRCTAD_KickUserFromChannel");
+							break;
+						}
+
+						if(IRCMsg_Kick(&mensaje, "prefix", channel, target, msg)!= IRC_OK){
+							fprintf(stderr, "Error en IRCMsg_Kick");
+							break;
+						}
+						fprintf(stderr, "Mensaje = %s", mensaje);
+						int targetSocket=getSocket(target);
+						send(targetSocket, mensaje, strlen(mensaje),0);
+					}
+					if(IRCTAD_GetUserModeOnChannel (channel, *user) == 0x0020){
+						IRCMsg_ErrChanOPrivsNeeded (&mensaje, "prefix", *user, channel);
+						int targetSocket=getSocket(*user);
+						send(targetSocket, mensaje, strlen(mensaje),0);
+					}
+					IRCTAD_ShowUsersOnChannel (channel);				
+				break;
 			
 	}
 }
